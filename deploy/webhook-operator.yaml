@@ -3903,12 +3903,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - events
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resources:
   - namespaces
   - nodes
   - pods
@@ -3916,6 +3910,14 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
 - apiGroups:
   - admissionregistration.k8s.io
   resourceNames:
@@ -3994,13 +3996,6 @@ rules:
   - clusteroperators
   verbs:
   - get
-- apiGroups:
-  - events.k8s.io
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
 - apiGroups:
   - security-profiles-operator.x-k8s.io
   resources:

@@ -6,6 +6,7 @@
 - [Metrics endpoints](#metrics-endpoints)
   - [Metrics of the operator and webhook pods](#metrics-of-the-operator-and-webhook-pods)
 - [Available metrics](#available-metrics)
+- [Profile coverage metrics](#profile-coverage-metrics)
 - [Metric cardinality](#metric-cardinality)
 - [Automatic ServiceMonitor deployment](#automatic-servicemonitor-deployment)
 <!-- /toc -->
@@ -137,6 +138,11 @@ TOKEN=$(kubectl create token spo-metrics-client -n security-profiles-operator)
 curl -ks -H "Authorization: Bearer $TOKEN" https://<pod-ip>:8443/metrics
 ```
 
+The coverage tracker of the operator serves the profile coverage gauges of
+every namespace on the same endpoint, see
+[profile coverage](#profile-coverage-metrics). It records a warning event on
+unconstrained pods instead of blocking them.
+
 ## Available metrics
 
 The controller-runtime endpoints (`/metrics`) as well as the daemon endpoint
@@ -205,6 +211,39 @@ The error metrics use these reasons:
 - `apparmor_profile_error_total`: `AppArmorNotSupportedOnNode`,
   `CannotLoadAppArmorProfile`, `CannotUnloadAppArmorProfile`,
   `CannotUpdateAppArmorProfile` and `CannotUpdateNodeStatus`.
+
+## Profile coverage metrics
+
+The `coverage-tracker` controller, enabled by default through the
+`--with-coverage-tracker` flag, measures how many running pods run with a
+seccomp and an AppArmor profile. It only reads pods and namespaces, it never
+mutates a pod or blocks its scheduling. A pod whose container has no profile
+or explicitly runs `Unconfined` counts as unconstrained, while
+`RuntimeDefault` and `Localhost` profiles count as constrained. Pod level
+security contexts apply to the containers which do not override them, and
+completed pods are not counted.
+
+The gauges are served by the operator pod on its `/metrics` endpoint, each
+series carries the `namespace` and the `profile` label, whose value is
+`seccomp` or `apparmor`:
+
+| Metric Key                                                  | Labels                 | Type  | Purpose                                                                          |
+| ----------------------------------------------------------- | ---------------------- | ----- | -------------------------------------------------------------------------------- |
+| `security_profiles_operator_profile_coverage_pods_total`    | `namespace`, `profile` | Gauge | Number of running pods in the namespace considered by the coverage tracking.     |
+| `security_profiles_operator_profile_coverage_constrained_pods` | `namespace`, `profile` | Gauge | Number of running pods whose every container is constrained by the profile. |
+| `security_profiles_operator_profile_coverage_ratio`         | `namespace`, `profile` | Gauge | Ratio of constrained pods over all running pods, between `0` and `1`.            |
+
+The controller records a warning event with the reason
+`MissingSecurityProfile` on every pod which has an unconstrained container,
+once per profile mechanism until the pod gets constrained or is deleted. The
+unconstrained pods can be listed through their events:
+
+```console
+$ kubectl get events --field-selector reason=MissingSecurityProfile --all-namespaces
+NAMESPACE   LAST SEEN   TYPE      REASON                    OBJECT        MESSAGE
+mixed       2m          Warning   MissingSecurityProfile    pod/bad       Pod has containers without a constraining seccomp profile: app
+unmanaged   2m          Warning   MissingSecurityProfile    pod/wild-1    Pod has containers without a constraining apparmor profile: app
+```
 
 ## Metric cardinality
 

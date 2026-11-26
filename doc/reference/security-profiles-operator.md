@@ -59,6 +59,8 @@ run the manager
 
 **--with-binding-tracker**: enable the binding tracker (default: true)
 
+**--with-coverage-tracker**: enable the profile coverage tracker (default: true)
+
 **--with-nodestatus-controller**: enable the node status controller (default: true)
 
 **--with-recording-merger**: enable the recording merger (default: true)

@@ -87,6 +87,7 @@ import (
 	"sigs.k8s.io/security-profiles-operator/internal/pkg/daemon/seccompprofile"
 	"sigs.k8s.io/security-profiles-operator/internal/pkg/daemon/selinuxprofile"
 	"sigs.k8s.io/security-profiles-operator/internal/pkg/manager/bindingtracker"
+	"sigs.k8s.io/security-profiles-operator/internal/pkg/manager/coveragetracker"
 	nodestatus "sigs.k8s.io/security-profiles-operator/internal/pkg/manager/nodestatus"
 	"sigs.k8s.io/security-profiles-operator/internal/pkg/manager/recordingmerger"
 	"sigs.k8s.io/security-profiles-operator/internal/pkg/manager/recordingtracker"
@@ -111,6 +112,7 @@ const (
 	recordingMergerFlag          string = "with-recording-merger"
 	recordingTrackerFlag         string = "with-recording-tracker"
 	bindingTrackerFlag           string = "with-binding-tracker"
+	coverageTrackerFlag          string = "with-coverage-tracker"
 	recordingFlag                string = "with-recording"
 	seccompFlag                  string = "with-seccomp"
 	selinuxFlag                  string = "with-selinux"
@@ -320,6 +322,7 @@ func managerCommand(info *version.Info) *cli.Command {
 			enabledByDefault(recordingMergerFlag, "enable the recording merger"),
 			enabledByDefault(recordingTrackerFlag, "enable the recording tracker"),
 			enabledByDefault(bindingTrackerFlag, "enable the binding tracker"),
+			enabledByDefault(coverageTrackerFlag, "enable the profile coverage tracker"),
 			&cli.IntFlag{
 				Name:    maxConcurrentReconcilesFlag,
 				Value:   controller.DefaultMaxConcurrentReconciles,
@@ -778,6 +781,10 @@ func runManager(ctx *cli.Context, info *version.Info) error {
 
 	if ctx.Bool(bindingTrackerFlag) {
 		enabledControllers = append(enabledControllers, bindingtracker.NewController())
+	}
+
+	if ctx.Bool(coverageTrackerFlag) {
+		enabledControllers = append(enabledControllers, coveragetracker.NewController())
 	}
 
 	setupLog.Info("enabled controllers", "controllers", enabledControllers)
